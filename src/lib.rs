@@ -1,10 +1,26 @@
+#![feature(core)]
+#![feature(libc)]
+#![feature(std_misc)]
 extern crate libc;
+use std::ffi::CStr;
+use libc::*;
+use std::str;
 use std::result::Result;
+use std::ffi::CString;
 
 mod ffi;
 
+pub fn c_string_to_string(c_string: CString) -> String
+{
+    str::from_utf8(c_string.to_bytes()).unwrap().to_string()
+}
+pub fn str_to_c_string(string: &str) -> CString
+{
+    CString::new(string.as_slice().as_bytes()).unwrap()
+}
+
 pub fn init(name: &str) -> bool{
-    let name_c_string = name.to_c_str();
+    let name_c_string = CString::new(name).unwrap();
     unsafe {
         return ffi::notify_init(name_c_string.as_ptr());
     }
@@ -31,8 +47,8 @@ pub struct Error {
 impl Error {
     fn new(error: ffi::Error) -> ::Error {
         unsafe {
-            let domain: String = ffi::g_quark_to_string(error.domain).to_string();
-            let message: String = error.message.to_string();
+            let domain: String = c_string_to_string(ffi::g_quark_to_string(error.domain));
+            let message: String = c_string_to_string(error.message);
             return Error { domain:domain, code:error.code, message:message }
         }
     }
@@ -50,9 +66,9 @@ pub struct Notification {
 
 impl Notification {
     pub fn new(summary: &str, body: &str, icon: &str) -> Notification {
-        let summary_c = summary.to_c_str();
-        let body_c = body.to_c_str();
-        let icon_c = icon.to_c_str();
+        let summary_c = str_to_c_string(summary);
+        let body_c = str_to_c_string(body);
+        let icon_c = str_to_c_string(icon);
         unsafe {
             return Notification { ptr: ffi::notify_notification_new(summary_c.as_ptr(), body_c.as_ptr(), icon_c.as_ptr()) }
         }
@@ -74,9 +90,9 @@ impl Notification {
 
     pub fn set_urgency(&self, urgency: Urgency) {
         let urgency = match urgency {
-            Low => 0,
-            Normal => 1,
-            Critical => 2
+            Urgency::Low => 0,
+            Urgency::Normal => 1,
+            Urgency::Critical => 2
         };
         unsafe {
             ffi::notify_notification_set_urgency(self.ptr, urgency);
@@ -91,16 +107,16 @@ impl Notification {
     }
 
     pub fn set_category(&self, category: &str) {
-        let category = category.to_c_str();
+        let category = str_to_c_string(category);
         unsafe {
             ffi::notify_notification_set_category(self.ptr, category.as_ptr());
         }
     }
 
     pub fn change(&self, summary: &str, body: &str, icon: &str) -> Result<(),Error> {
-        let summary = summary.to_c_str();
-        let body = body.to_c_str();
-        let icon = icon.to_c_str();
+        let summary = str_to_c_string(summary);
+        let body = str_to_c_string(body);
+        let icon = str_to_c_string(icon);
         unsafe {
             let mut error: ffi::Error = std::mem::zeroed();
             return

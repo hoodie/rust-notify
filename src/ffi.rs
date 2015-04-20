@@ -1,7 +1,9 @@
 #![allow(improper_ctypes)]
 
 extern crate libc;
-use std::c_str;
+use std::str;
+use std::ffi::CString;
+use libc::*;
 
 #[repr(C)]
 pub struct Notification;
@@ -10,7 +12,7 @@ pub struct Notification;
 pub struct Error {
     pub domain: u32,
     pub code: i32,
-    pub message: c_str::CString
+    pub message: CString
 }
     
 #[link(name = "notify")]
@@ -30,5 +32,5 @@ extern "C" {
 
 #[link(name = "glib-2.0")]
 extern {
-    pub fn g_quark_to_string(quark: u32) -> c_str::CString;
+    pub fn g_quark_to_string(quark: u32) -> CString;
 }
